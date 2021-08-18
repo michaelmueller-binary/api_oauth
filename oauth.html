@@ -1,0 +1,53 @@
+<HTML>
+    <H1>Hello</H1>
+</HTML>
+
+<button onclick="auth()">Login</button>
+
+
+<script>
+const app_id = '29677';
+function auth() {
+window.location = 'https://oauth.binary.com/oauth2/authorize?app_id=' + app_id
+}
+
+function balance () {
+    var url = window.location.toString();
+    console.log(url);
+    var api_token =  new URLSearchParams(url).get('token2');
+    balance = document.getElementById('balance');
+
+    console.log('token '+ api_token);
+    balance.innerText = api_token;
+    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=' + app_id);
+    ws.onopen = function (evt) {
+        ws.send(JSON.stringify({ "authorize": api_token })) // First send an authorize call.
+    };
+
+    ws.onmessage = function (msg) {
+        var data = JSON.parse(msg.data);
+        //console.log('response: %o', data); // Uncomment to see the full JSON response.
+        if (data.error !== undefined) {
+            console.log('Error : %o', data.error.message);
+        } else if (data.msg_type == 'authorize') {
+            /*
+             * Since we can not ensure calls to webse to the authorize call before sending the balance request.
+             *
+             * We subscribe to balance updates so any updates to balance will be received.
+             * If you perform a trade while this script is running you should see updates
+             * to the balance printed.
+             */
+            ws.send(JSON.stringify({ "balance": 1, "subscribe": 1 }))
+        } else if (data.msg_type == 'balance') {
+            balance.innerText = data.balance.balance;
+            console.log('Current Balance: %o', data.balance.balance);
+        } else {
+            console.log('Unknown Response %o', data);
+        }
+    };
+}
+
+window.onload=balance;
+</script>
+<h2>Balance</h2>
+<div id="balance"></div>
